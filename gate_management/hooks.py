@@ -166,6 +166,8 @@ user_data_fields = [
 	}
 ]
 
+fixtures = ['Custom Field']
+
 # Authentication and authorization
 # --------------------------------
 
