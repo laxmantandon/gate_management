@@ -1,0 +1,136 @@
+{
+ "actions": [],
+ "autoname": "format:GP-{gate}-{####}",
+ "creation": "2021-08-04 13:45:31.953947",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "customer_info_section",
+  "party_name",
+  "in_time",
+  "gate",
+  "customer_info_column_column",
+  "reference_number",
+  "out_time",
+  "vehicle_info_section",
+  "vehicle_number",
+  "driver_name",
+  "vehicle_info_column_column",
+  "type",
+  "driver_contact",
+  "status"
+ ],
+ "fields": [
+  {
+   "fieldname": "customer_info_section",
+   "fieldtype": "Section Break",
+   "label": "Customer Info"
+  },
+  {
+   "fieldname": "party_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Party Name"
+  },
+  {
+   "fieldname": "in_time",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "In Time"
+  },
+  {
+   "fieldname": "gate",
+   "fieldtype": "Link",
+   "label": "Gate",
+   "options": "Gate"
+  },
+  {
+   "fieldname": "customer_info_column_column",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "reference_number",
+   "fieldtype": "Data",
+   "label": "Reference Number"
+  },
+  {
+   "fieldname": "out_time",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Out Time"
+  },
+  {
+   "fieldname": "vehicle_info_section",
+   "fieldtype": "Section Break",
+   "label": "Vehicle Info"
+  },
+  {
+   "fieldname": "vehicle_number",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Vehicle Number"
+  },
+  {
+   "fieldname": "driver_name",
+   "fieldtype": "Data",
+   "label": "Driver Name"
+  },
+  {
+   "fieldname": "vehicle_info_column_column",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "type",
+   "fieldtype": "Select",
+   "label": "Type",
+   "options": "Pickup\nDrop"
+  },
+  {
+   "fieldname": "driver_contact",
+   "fieldtype": "Data",
+   "label": "Driver Contact"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Int",
+   "label": "Status"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2021-08-04 14:14:42.456186",
+ "modified_by": "Administrator",
+ "module": "Gate Management",
+ "name": "Gate Entry",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Gate Keeper",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}
