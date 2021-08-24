@@ -1,5 +1,8 @@
 import frappe
 from frappe import auth
+import base64
+import os
+from frappe.utils import get_site_name
 
 @frappe.whitelist( allow_guest=True )
 def login(usr, pwd):
@@ -44,3 +47,33 @@ def generate_keys(user):
     user_details.save()
 
     return api_secret
+
+
+@frappe.whitelist( allow_guest=True )
+def get_doctype_images(doctype, docname):
+
+    attachments = frappe.get_all("File", fields=["attached_to_name", "file_name", "file_url", "is_private"], filters = {"attached_to_name": docname, "attached_to_doctype": doctype})
+    site_path = frappe.get_site_path('private')
+    site_name = get_site_name(frappe.local.request.host)
+    x = frappe.utils.get_files_path('GP-Gate C-00282.jpg', is_private=1)
+    
+
+    resp = []
+    for attachment in attachments:
+        # file_path = site_path + attachment["file_url"]
+        x = frappe.utils.get_files_path(attachment['file_name'], is_private=1)
+        with open(x, "rb") as f:
+            # encoded_string = base64.b64encode(image_file.read())
+            img_content = f.read()
+            img_base64 = base64.b64encode(img_content).decode()
+            img_base64 = 'data:image/jpeg;base64,' + img_base64
+        
+        resp.append({ "image" : img_base64})
+
+    return resp
+        
+# @mrsteel.route('/chat_images/image/<file_name>.jpg')
+# def return_image(file_name):
+#     file = f'/home/steptech/mrsteel_python/chat_images/{file_name}.jpg'
+#     return send_file(file, mimetype='image/jpg')
+
