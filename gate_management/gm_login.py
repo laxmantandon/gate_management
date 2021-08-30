@@ -99,3 +99,7 @@ def gm_write_file(data, filename, docname):
 
     except Exception as e:
         return e
+
+
+def create_transport_jv(purc_invoice):
+    print(purc_invoice)

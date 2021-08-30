@@ -1,4 +1,5 @@
 from . import __version__ as app_version
+import gate_management
 
 app_name = "gate_management"
 app_title = "Gate Management"
@@ -96,6 +97,12 @@ app_license = "MIT"
 # 		"on_trash": "method"
 #	}
 # }
+
+doc_events = {
+	"Purchase Invoice": {
+		"on_submit": "gate_management.gm_login.create_transport_jv"
+	}
+}
 
 # Scheduled Tasks
 # ---------------
