@@ -78,7 +78,13 @@ def get_doctype_images(doctype, docname):
 @frappe.whitelist()
 def gm_write_file(data, filename, docname):
     try:
-        filename_ext = f'/home/expressdev/frappe-bench/sites/develop.etplraipur.in/private/files/{filename}'
+
+        system_settings = frappe.get_doc('System Settings')
+        
+        # filename_ext = f'/home/expressdev/frappe-bench/sites/develop.etplraipur.in/private/files/{filename}'
+        # filename_ext = f'/home/express/frappe-bench/sites/erp.etplraipur.in/private/files/{filename}'
+        
+        filename_ext = f'{system_settings.image_upload_path}/{filename}'
         base64data = data.replace('data:image/jpeg;base64,', '')
         base64data = data.replace('data:image/*;base64,', '')
         imgdata = base64.b64decode(base64data)
