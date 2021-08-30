@@ -101,5 +101,55 @@ def gm_write_file(data, filename, docname):
         return e
 
 
-def create_transport_jv(purc_invoice):
-    print(purc_invoice)
+def create_transport_jv(doc, method):
+    if doc.purch_bilty_amt_jv > 0:
+        jv = frappe.get_doc({
+            "title": doc.purch_transporter_name,
+            "voucher_type": "Journal Entry",
+            # "naming_series": "ACC-JV-.YYYY.-",
+            "posting_date": doc.posting_date,
+            "bill_no": doc.name,
+            "bill_date": doc.posting_date,
+            "pay_to_recd_from": doc.purch_transporter_name,
+            "doctype": "Journal Entry",
+            "accounts": [
+                {
+                    "parentfield": "accounts",
+                    "parenttype": "Journal Entry",
+                    "account": "Transportation Expenses - ETPL",
+                    "account_type": "Expense Account",
+                    "cost_center": "Main - ETPL",
+                    "account_currency": "INR",
+                    "debit_in_account_currency": doc.purch_bilty_amt_jv,
+                    "debit": doc.purch_bilty_amt_jv,
+                    "credit_in_account_currency": 0,
+                    "credit": 0,
+                    "is_advance": "No",
+                    "against_account": doc.purch_transporter_name,
+                    "doctype": "Journal Entry Account"
+                },
+                {
+                    "parentfield": "accounts",
+                    "parenttype": "Journal Entry",
+                    "account": f'{doc.purch_transporter_name} - ETPL',
+                    "account_type": "Payable",
+                    "party_type": "Supplier",
+                    "party": doc.purch_transporter_name,
+                    "cost_center": "Main - ETPL",
+                    "account_currency": "INR",
+                    "exchange_rate": 1,
+                    "debit_in_account_currency": 0,
+                    "debit": 0,
+                    "credit_in_account_currency": doc.purch_bilty_amt_jv,
+                    "credit": doc.purch_bilty_amt_jv,
+                    "is_advance": "No",
+                    "against_account": "Transportation Expenses - ETPL",
+                    "doctype": "Journal Entry Account"
+                }
+            ]
+        })
+
+        jv.insert()
+        jv.submit()
+
+        frappe.msgprint(f'JV Created {jv.name}')
