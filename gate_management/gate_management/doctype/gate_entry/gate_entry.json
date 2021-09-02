@@ -8,18 +8,44 @@
  "field_order": [
   "customer_info_section",
   "party_name",
-  "in_time",
-  "gate",
-  "customer_info_column_column",
+  "column_break_3",
   "reference_number",
+  "column_break_5",
+  "invoice_date",
+  "column_break_7",
+  "invoice_value",
+  "section_break_8",
+  "gate",
+  "column_break_9",
+  "type",
+  "column_break_10",
+  "in_time",
+  "column_break_12",
   "out_time",
   "vehicle_info_section",
   "vehicle_number",
-  "driver_name",
+  "transporter_name",
+  "column_break_20",
+  "lr_number",
+  "lr_date",
+  "lr_amount",
   "vehicle_info_column_column",
-  "type",
+  "driver_name",
   "driver_contact",
-  "status"
+  "section_break_27",
+  "item_group",
+  "column_break_29",
+  "godown",
+  "column_break_31",
+  "weight",
+  "column_break_33",
+  "packages",
+  "section_break_15",
+  "notes",
+  "section_break_37",
+  "status",
+  "column_break_39",
+  "ge_status"
  ],
  "fields": [
   {
@@ -46,13 +72,9 @@
    "options": "Gate"
   },
   {
-   "fieldname": "customer_info_column_column",
-   "fieldtype": "Column Break"
-  },
-  {
    "fieldname": "reference_number",
    "fieldtype": "Data",
-   "label": "Reference Number"
+   "label": "Invoice No"
   },
   {
    "fieldname": "out_time",
@@ -95,11 +117,132 @@
    "fieldname": "status",
    "fieldtype": "Int",
    "label": "Status"
+  },
+  {
+   "fieldname": "section_break_15",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Long Text",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "invoice_date",
+   "fieldtype": "Date",
+   "label": "Invoice Date"
+  },
+  {
+   "fieldname": "invoice_value",
+   "fieldtype": "Currency",
+   "label": "Invoice Value"
+  },
+  {
+   "fieldname": "item_group",
+   "fieldtype": "Data",
+   "label": "Item Group"
+  },
+  {
+   "fieldname": "godown",
+   "fieldtype": "Data",
+   "label": "Godown"
+  },
+  {
+   "fieldname": "lr_number",
+   "fieldtype": "Data",
+   "label": "LR Number"
+  },
+  {
+   "fieldname": "lr_date",
+   "fieldtype": "Date",
+   "label": "LR Date"
+  },
+  {
+   "fieldname": "lr_amount",
+   "fieldtype": "Data",
+   "label": "LR Amount"
+  },
+  {
+   "fieldname": "weight",
+   "fieldtype": "Float",
+   "label": "Weight"
+  },
+  {
+   "fieldname": "packages",
+   "fieldtype": "Data",
+   "label": "Packages"
+  },
+  {
+   "fieldname": "section_break_8",
+   "fieldtype": "Section Break",
+   "label": "Gate"
+  },
+  {
+   "fieldname": "column_break_10",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_12",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_9",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_5",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_7",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_20",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_27",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_29",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_31",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_33",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_37",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_39",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "ge_status",
+   "fieldtype": "Data",
+   "label": "Gate Entry Status"
+  },
+  {
+   "fieldname": "transporter_name",
+   "fieldtype": "Data",
+   "label": "Transporter Name"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2021-08-24 20:19:20.125545",
+ "modified": "2021-09-02 16:22:49.880287",
  "modified_by": "Administrator",
  "module": "Gate Management",
  "name": "Gate Entry",
