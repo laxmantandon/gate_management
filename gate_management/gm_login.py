@@ -108,7 +108,7 @@ def gm_write_file(data, filename, docname):
 
 
 def create_transport_jv(doc, method):
-    if doc.purch_bilty_amt_jv > 0 and doc.pass_transport_jv == True:
+    if doc.purch_bilty_amt_jv > 0:
         jv = frappe.get_doc({
             "title": doc.purch_transporter_name,
             "voucher_type": "Journal Entry",
