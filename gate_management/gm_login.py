@@ -109,6 +109,7 @@ def gm_write_file(data, filename, docname):
 
 def create_transport_jv(doc, method):
     if doc.purch_bilty_amt_jv > 0:
+
         jv = frappe.get_doc({
             "title": doc.purch_transporter_name,
             "voucher_type": "Journal Entry",
@@ -118,6 +119,7 @@ def create_transport_jv(doc, method):
             "bill_date": doc.posting_date,
             "pay_to_recd_from": doc.purch_transporter_name,
             "doctype": "Journal Entry",
+            "user_remark": doc.remarks,
             "accounts": [
                 {
                     "parentfield": "accounts",
