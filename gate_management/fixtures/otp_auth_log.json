@@ -1,0 +1,15 @@
+[
+ {
+  "docstatus": 0,
+  "doctype": "OTP Auth Log",
+  "mobile_no": "9926100041",
+  "modified": null,
+  "name": "44e481082",
+  "otp": "1234",
+  "parent": null,
+  "parentfield": null,
+  "parenttype": null,
+  "time": "2021-09-18 10:27:46",
+  "user": "admin@step-tech.in"
+ }
+]

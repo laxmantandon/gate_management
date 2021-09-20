@@ -1,14 +1,18 @@
+from datetime import datetime
+import random
 import frappe
 from frappe import auth
 import base64
 import os
 from frappe.utils import get_site_name
+from frappe.utils.data import escape_html
+from frappe.website.utils import is_signup_enabled
+from redis import DataError
+import requests
 
 
 @frappe.whitelist(allow_guest=True)
 def login(usr, pwd):
-    print('user: ', usr)
-    print('password', pwd)
     try:
         login_manager = frappe.auth.LoginManager()
         login_manager.authenticate(user=usr, pwd=pwd)
@@ -36,20 +40,22 @@ def login(usr, pwd):
         "role": user.roles[0].role
     }
 
-
 def generate_keys(user):
     user_details = frappe.get_doc('User', user)
     api_secret = frappe.generate_hash(length=15)
 
     if not user_details.api_key:
         api_key = frappe.generate_hash(length=15)
-        user_details.api_key = api_key
+        # user_details.api_key = api_key
+        frappe.db.set_value('User', user, 'api_key', api_key)
 
-    user_details.api_secret = api_secret
-    user_details.save()
+    # user_details.api_secret = api_secret
+    # user_details.flags.ignore_permissions = True
+    # user_details.save()
+    frappe.db.set_value('User', user, 'api_secret', api_secret)
+    frappe.db.commit()
 
     return api_secret
-
 
 @frappe.whitelist(allow_guest=True)
 def get_doctype_images(doctype, docname):
@@ -73,7 +79,6 @@ def get_doctype_images(doctype, docname):
         resp.append({"image": img_base64})
 
     return resp
-
 
 @frappe.whitelist()
 def gm_write_file(data, filename, docname):
@@ -105,7 +110,6 @@ def gm_write_file(data, filename, docname):
 
     except Exception as e:
         return e
-
 
 def create_transport_jv(doc, method):
     if doc.purch_bilty_amt_jv > 0:
@@ -160,3 +164,272 @@ def create_transport_jv(doc, method):
         jv.insert()
 
         frappe.msgprint(f'JV Created {jv.name}')
+
+@frappe.whitelist(allow_guest=True)
+def generate_otp(mobile):
+
+    if len(mobile) != 10:
+        frappe.local.response["message"] = {
+            "success_key": 0,
+            "message": "Invalid Mobile Number"
+        }
+        return 
+
+    if not mobile:
+        frappe.local.response["message"] = {
+            "success_key": 0,
+            "message": "Please provide mobile number"
+        }
+        return 
+
+
+    # otp = str(random.randint(1000,9999))
+    
+    # user = frappe.db.get_list('User', filters={'mobile_no': mobile}, fields=['email', 'first_name', 'last_name'])
+    user_email = frappe.db.get_all('User', filters={'mobile_no': mobile}, fields=['email'])
+    # print(user_email)
+    if not user_email:
+        frappe.local.response["message"] = {
+            "success_key": 0,
+            "message": "Account does not exits"
+        }
+        return 
+
+    user = frappe.get_doc('User', user_email[0]['email'])
+    otp = "1234"
+    # try:
+    #     # url = f"http://login.bulksms.org/app/smsapi/index.php?key=45B925523F11E0&campaign=4465&routeid=101085&type=text&contacts={_mobile}&senderid=SABUAC&msg=your%20OTP%20for%20login%20to%20acc.sabooco.com%20is%20{otp}&template_id=1407162626157392009"
+    #     otp = str(random.randint(1000,9999))
+    #     url = f"http://bhashsms.com/api/sendmsg.php?user=Steptech&pass=123456&sender=STEPTC&phone={mobile}&text=Dear%20Customer,%20Your%20OTP%20is%20{otp}.%20Regards%20Chunnilal%20Kesrimal%20Barolta&priority=ndnd&stype=normal"
+    #     r = requests.get(url)
+    #     if r.status_code != 200:
+    #         frappe.local.response["message"] = {
+    #             "success_key": 0,
+    #             "message": "Account does not exits"
+    #         }
+    #         return 
+    # except Exception as e:
+    #     frappe.local.response["message"] = {
+    #         "success_key": 0,
+    #         "message": str(e)
+    #     }
+    #     return 
+
+    try:
+        name = frappe.generate_hash()[0:9]
+        frappe.db.sql(""" INSERT INTO `tabOTP Auth Log` (name, mobile_no, user, otp, time) VALUES (%s, %s, %s, %s, NOW())""", (name, mobile, user.name, otp))
+        frappe.db.commit()
+
+    except Exception as e:
+        return e
+
+    frappe.local.response["message"] = {
+        "success_key": 1,
+        "message": "OTP Sent"
+    }
+    return 
+    
+@frappe.whitelist(allow_guest=True)
+def validate_otp(mobile, otp):
+
+    if not mobile or not otp:
+        frappe.local.response["message"] = {
+            "success_key": 0,
+            "message": "invalid inputs"
+        }
+        return
+    
+    x = frappe.db.count('OTP Auth Log',
+        {
+            'mobile_no': mobile,
+            'otp': otp
+        })
+
+    if not x > 0:
+        frappe.local.response["message"] = {
+            "success_key": 0,
+            "message": "invalid otp, please try again with correct otp"
+        }
+        return
+
+    user_email = frappe.db.get_all('User', filters={'mobile_no': mobile}, fields=['email'])
+    # print(user_email)
+    if not user_email:
+        frappe.local.response["message"] = {
+            "success_key": 0,
+            "message": "Account does not exits"
+        }
+        return 
+
+    user = frappe.get_doc('User', user_email[0]['email'])
+    
+    api_generate = generate_keys(user.name)
+    user_resp = frappe.get_doc('User', user.name)
+
+    frappe.response["message"] = {
+        "success_key": 1,
+        "message": "Authentication success",
+        "api_key": user_resp.api_key,
+        "api_secret": api_generate,
+        "username": user.username,
+        "email": user_resp.email,
+        "role": user_resp.roles[0].role
+        }
+
+@frappe.whitelist(allow_guest=True)
+def sign_up(email, full_name, mobile):
+    if not is_signup_enabled():
+        frappe.response["message"] = {
+            "success_key": 0,
+            "message": "Signup is",
+        }
+
+    user = frappe.db.get("User", {"email": email})
+    if user:
+        if user.disabled:
+            frappe.response["message"] = {
+                "success_key": 0,
+                "message": "User is disabled",
+            }
+            return
+        else:
+            frappe.response["message"] = {
+                "success_key": 0,
+                "message": "User Already Registered",
+            }
+            return
+    else:
+        if frappe.db.sql("""select count(*) from tabUser where
+            HOUR(TIMEDIFF(CURRENT_TIMESTAMP, TIMESTAMP(modified)))=1""")[0][0] > 300:
+
+            frappe.response["message"] = {
+                "success_key": 0,
+                "message": "Too many Registrations",
+            }
+
+        from frappe.utils import random_string
+        user = frappe.get_doc({
+            "doctype":"User",
+            "email": email,
+            "mobile_no": mobile,
+            "send_welcome_email": 0,
+            "first_name": escape_html(full_name),
+            "enabled": 1,
+            "new_password": random_string(10),
+            "user_type": "Website User"
+        })
+        user.flags.ignore_permissions = True
+        user.flags.ignore_password_policy = True
+        user.insert()
+        frappe.db.commit()
+
+        frappe.response["message"] = {
+            "success_key": 1,
+            "message": "Signup Success, Team will get in touch with you soon",
+        }
+
+
+def get_user_info(api_key, api_sec):
+    # api_key  = frappe.request.headers.get("Authorization")[6:21]
+    # api_sec  = frappe.request.headers.get("Authorization")[22:]
+    doc = frappe.db.get_value(
+		doctype='User',
+		filters={"api_key": api_key, "api_secret": api_sec},
+		fieldname=["name"]
+	)
+    if doc:
+        return doc
+    
+    return None
+
+
+@frappe.whitelist(allow_guest=True)
+def get_orders():
+    api_key  = frappe.request.headers.get("Authorization")[6:21]
+    api_sec  = frappe.request.headers.get("Authorization")[22:]
+
+    user_email = get_user_info(api_key, api_sec)
+    if not user_email:
+        frappe.response["message"] = {
+            "success_key": 0,
+            "message": "Unauthorised Access",
+        }
+        return 
+
+    orders = frappe.db.get_all('Sales Order',
+        filters={
+            'contact_email': user_email,
+            'docstatus': 1
+        },
+        fields=['name', 'transaction_date', 'docstatus', 'rounded_total', 'billing_status', 'customer', 'delivery_status', 'delivery_date', 'status']
+    )
+    return orders
+
+
+@frappe.whitelist(allow_guest=True)
+def get_order_details(name):
+    api_key  = frappe.request.headers.get("Authorization")[6:21]
+    api_sec  = frappe.request.headers.get("Authorization")[22:]
+
+    user_email = get_user_info(api_key, api_sec)
+    if not user_email:
+        frappe.response["message"] = {
+            "success_key": 0,
+            "message": "Unauthorised Access",
+        }
+        return 
+
+    order = frappe.get_doc('Sales Order', name)
+    return order
+
+
+@frappe.whitelist(allow_guest=True)
+def ledger(from_date, to_date):
+    api_key  = frappe.request.headers.get("Authorization")[6:21]
+    api_sec  = frappe.request.headers.get("Authorization")[22:]
+
+    user_email = get_user_info(api_key, api_sec)
+    if not user_email:
+        frappe.response["message"] = {
+            "success_key": 0,
+            "message": "Unauthorised Access",
+        }
+        return
+
+    customer = frappe.db.get_all('Customer',
+        filters={
+            'email_id': user_email,
+            'disabled': 0
+        },
+        fields=['customer_name']
+    )
+
+    if not len(customer) > 0:
+        frappe.response["message"] = {
+            "success_key": 0,
+            "message": "Contact Administrator",
+        }
+        return
+
+    gl_op = frappe.db.sql("""
+        SELECT
+            'Opening Balance' as voucher_type, sum(debit) debit, sum(credit) credit
+        FROM `tabGL Entry`
+        WHERE party = %s AND docstatus = 1 AND is_cancelled = 0
+        AND
+        posting_date < %s
+    """, (customer[0].customer_name, from_date), as_dict=1)
+
+    gl = frappe.db.sql("""
+        SELECT 
+    	    posting_date, party, `against`, debit, credit, voucher_type, voucher_no, remarks
+        FROM `tabGL Entry`
+        WHERE party = %s AND docstatus = 1 AND is_cancelled = 0
+        AND
+        posting_date BETWEEN %s AND %s
+    """, (customer[0].customer_name, from_date, to_date), as_dict=1)
+
+    return gl_op + gl
+
+
+

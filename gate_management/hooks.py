@@ -173,7 +173,7 @@ user_data_fields = [
 	}
 ]
 
-fixtures = ['Custom Field', 'Role']
+fixtures = ['Custom Field', 'Role', 'OTP Auth Log']
 
 # Authentication and authorization
 # --------------------------------

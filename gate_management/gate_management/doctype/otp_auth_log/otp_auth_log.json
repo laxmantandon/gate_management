@@ -1,0 +1,55 @@
+{
+ "actions": [],
+ "creation": "2021-09-18 14:01:33.014111",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "mobile_no",
+  "time",
+  "user",
+  "otp"
+ ],
+ "fields": [
+  {
+   "fieldname": "mobile_no",
+   "fieldtype": "Data",
+   "label": "Mobile No"
+  },
+  {
+   "fieldname": "time",
+   "fieldtype": "Datetime",
+   "label": "Time"
+  },
+  {
+   "fieldname": "user",
+   "fieldtype": "Data",
+   "label": "user"
+  },
+  {
+   "fieldname": "otp",
+   "fieldtype": "Data",
+   "label": "otp"
+  }
+ ],
+ "links": [],
+ "modified": "2021-09-18 14:46:51.202344",
+ "modified_by": "Administrator",
+ "module": "Gate Management",
+ "name": "OTP Auth Log",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}
