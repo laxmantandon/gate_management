@@ -333,10 +333,10 @@ def get_user_info(api_key, api_sec):
     # api_key  = frappe.request.headers.get("Authorization")[6:21]
     # api_sec  = frappe.request.headers.get("Authorization")[22:]
     doc = frappe.db.get_value(
-		doctype='User',
-		filters={"api_key": api_key, "api_secret": api_sec},
-		fieldname=["name"]
-	)
+        doctype='User',
+        filters={"api_key": api_key, "api_secret": api_sec},
+        fieldname=["name"]
+    )
     if doc:
         return doc
     
@@ -422,14 +422,56 @@ def ledger(from_date, to_date):
 
     gl = frappe.db.sql("""
         SELECT 
-    	    posting_date, party, `against`, debit, credit, voucher_type, voucher_no, remarks
+            posting_date, party, `against`, sum(debit) as debit, sum(credit) as credit, voucher_type, voucher_no, remarks
         FROM `tabGL Entry`
         WHERE party = %s AND docstatus = 1 AND is_cancelled = 0
         AND
-        posting_date BETWEEN %s AND %s
+        posting_date BETWEEN %s AND %s GROUP BY voucher_no ORDER BY posting_date ASC
     """, (customer[0].customer_name, from_date, to_date), as_dict=1)
 
     return gl_op + gl
+
+
+
+@frappe.whitelist(allow_guest=True)
+def outstanding(from_date, to_date):
+    api_key  = frappe.request.headers.get("Authorization")[6:21]
+    api_sec  = frappe.request.headers.get("Authorization")[22:]
+
+    user_email = get_user_info(api_key, api_sec)
+    if not user_email:
+        frappe.response["message"] = {
+            "success_key": 0,
+            "message": "Unauthorised Access",
+        }
+        return
+
+    customer = frappe.db.get_all('Customer',
+        filters={
+            'email_id': user_email,
+            'disabled': 0
+        },
+        fields=['customer_name']
+    )
+
+    if not len(customer) > 0:
+        frappe.response["message"] = {
+            "success_key": 0,
+            "message": "Contact Administrator",
+        }
+        return
+
+    gl = frappe.db.sql("""
+        SELECT
+            posting_date, `name`, party, voucher_no, SUM(debit) debit, SUM(credit) credit,
+            CASE WHEN is_opening = %s then voucher_no ELSE against_voucher END AS against_voucher_1
+        FROM `tabGL Entry`
+        WHERE `party` = %s AND is_cancelled = 0
+        GROUP BY against_voucher_1
+        ORDER BY posting_date DESC
+        """, ('Yes', customer[0].customer_name), as_dict=1)
+
+    return gl
 
 
 
