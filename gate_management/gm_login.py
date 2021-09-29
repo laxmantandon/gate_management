@@ -1,4 +1,5 @@
 from datetime import datetime
+import json
 import random
 import frappe
 from frappe import auth
@@ -80,7 +81,7 @@ def get_doctype_images(doctype, docname):
 
     return resp
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def gm_write_file(data, filename, docname):
     try:
 
@@ -106,6 +107,7 @@ def gm_write_file(data, filename, docname):
                 "doctype": "File",
             }
         )
+        doc.flags.ignore_permissions = True
         doc.insert()
 
     except Exception as e:
@@ -474,4 +476,103 @@ def outstanding(from_date, to_date):
     return gl
 
 
+@frappe.whitelist(allow_guest=True)
+def create_gate_entry():
+    payload = json.loads(frappe.request.data)
+    payload['doctype'] = 'Gate Entry'
+    # return payload
+    gate_entry = frappe.get_doc(payload)
+    gate_entry.flags.ignore_permissions = True
+    gate_entry.save()
+
+    frappe.response["message"] = {
+            "success_key": 1,
+            "message": "Entry Created Successfully",
+            "name": gate_entry.name
+    }
+    return
+
+@frappe.whitelist(allow_guest=True)
+def update_gate_entry():
+    payload = json.loads(frappe.request.data)
+    payload['doctype'] = 'Gate Entry'
+    # return payload
+    vehicle_number = payload['vehicle_number']
+    godown = payload['godown'] 
+    invoice_date = payload['invoice_date']
+    invoice_no = payload['reference_number']
+    invoice_value = payload['invoice_value']
+    item_group = payload['item_group']
+    lr_amount = payload['lr_amount']
+    lr_date = payload['lr_date']
+    lr_number = payload['lr_number']
+    packages = payload['packages']
+    party_name = payload['party_name']
+    transporter_name = payload['transporter_name']
+    weight = payload['weight']
+    name = payload['name']
+    notes = payload['notes']
+    driver_name = payload['driver_name']
+    driver_contact = payload['driver_contact']
+
+    frappe.db.sql("""
+        UPDATE `tabGate Entry` SET vehicle_number=%s, godown=%s, invoice_date=%s, invoice_no=%s,
+                invoice_value=%s, item_group=%s, lr_amount=%s, lr_date=%s, lr_number=%s, packages=%s,
+                party_name=%s, reference_number=%s, transporter_name=%s, weight=%s, notes=%s, driver_name=%s, driver_contact=%s
+                WHERE name = %s
+    """, (vehicle_number, godown, invoice_date, invoice_no, invoice_value, item_group, lr_amount, lr_date, lr_number, packages, party_name, invoice_no, transporter_name, weight, notes, driver_name, driver_contact, name))
+    frappe.db.commit()
+
+    frappe.response["message"] = {
+            "success_key": 1,
+            "message": "Entry Updated Successfully"
+    }
+    return
+
+@frappe.whitelist(allow_guest=True)
+def gate_entry_list():
+    api_key  = frappe.request.headers.get("Authorization")[6:21]
+    api_sec  = frappe.request.headers.get("Authorization")[22:]
+
+    user_email = get_user_info(api_key, api_sec)
+    if not user_email:
+        frappe.response["message"] = {
+            "success_key": 0,
+            "message": "Unauthorised Access",
+        }
+        return
+
+    ge = frappe.db.sql("""
+        SELECT
+            *
+        FROM `tabGate Entry`
+        WHERE ge_status = 'In'
+        ORDER BY in_time DESC
+        """, as_dict=1)
+
+    return ge
+
+@frappe.whitelist(allow_guest=True)
+def gate_entry_one():
+    api_key  = frappe.request.headers.get("Authorization")[6:21]
+    api_sec  = frappe.request.headers.get("Authorization")[22:]
+    docname  = frappe.request.headers.get("docname")
+
+    user_email = get_user_info(api_key, api_sec)
+    if not user_email:
+        frappe.response["message"] = {
+            "success_key": 0,
+            "message": "Unauthorised Access",
+        }
+        return
+
+    ge = frappe.db.sql("""
+        SELECT
+            *
+        FROM `tabGate Entry`
+        WHERE ge_status = 'In' and %s
+        ORDER BY in_time DESC
+        """, docname, as_dict=1)
+
+    return ge
 
