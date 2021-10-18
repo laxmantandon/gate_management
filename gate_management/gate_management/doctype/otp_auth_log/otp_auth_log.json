@@ -8,7 +8,8 @@
   "mobile_no",
   "time",
   "user",
-  "otp"
+  "otp",
+  "playerid"
  ],
  "fields": [
   {
@@ -30,10 +31,15 @@
    "fieldname": "otp",
    "fieldtype": "Data",
    "label": "otp"
+  },
+  {
+   "fieldname": "playerid",
+   "fieldtype": "Data",
+   "label": "PlayerID"
   }
  ],
  "links": [],
- "modified": "2021-09-18 14:46:51.202344",
+ "modified": "2021-10-05 18:33:21.693362",
  "modified_by": "Administrator",
  "module": "Gate Management",
  "name": "OTP Auth Log",

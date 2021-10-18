@@ -1,0 +1,70 @@
+{
+ "actions": [],
+ "autoname": "field:template_name",
+ "creation": "2021-10-04 19:24:53.365216",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "template_name",
+  "applicable_from",
+  "express_item_category",
+  "section_break_4",
+  "cd_template_days"
+ ],
+ "fields": [
+  {
+   "fieldname": "template_name",
+   "fieldtype": "Data",
+   "label": "Template Name",
+   "unique": 1
+  },
+  {
+   "fieldname": "applicable_from",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Applicable From"
+  },
+  {
+   "fieldname": "express_item_category",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Express Item Category",
+   "options": "Express Item Category"
+  },
+  {
+   "fieldname": "section_break_4",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "cd_template_days",
+   "fieldtype": "Table",
+   "label": "CD Template Days",
+   "options": "CD Template Days"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2021-10-04 19:34:42.352304",
+ "modified_by": "Administrator",
+ "module": "Gate Management",
+ "name": "CD Template",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}

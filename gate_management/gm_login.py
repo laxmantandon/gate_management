@@ -168,7 +168,7 @@ def create_transport_jv(doc, method):
         frappe.msgprint(f'JV Created {jv.name}')
 
 @frappe.whitelist(allow_guest=True)
-def generate_otp(mobile):
+def generate_otp(mobile, playerid):
 
     if len(mobile) != 10:
         frappe.local.response["message"] = {
@@ -219,7 +219,7 @@ def generate_otp(mobile):
 
     try:
         name = frappe.generate_hash()[0:9]
-        frappe.db.sql(""" INSERT INTO `tabOTP Auth Log` (name, mobile_no, user, otp, time) VALUES (%s, %s, %s, %s, NOW())""", (name, mobile, user.name, otp))
+        frappe.db.sql(""" INSERT INTO `tabOTP Auth Log` (name, mobile_no, user, otp, time, playerid) VALUES (%s, %s, %s, %s, NOW(), %s)""", (name, mobile, user.name, otp, playerid))
         frappe.db.commit()
 
     except Exception as e:
@@ -232,7 +232,7 @@ def generate_otp(mobile):
     return 
     
 @frappe.whitelist(allow_guest=True)
-def validate_otp(mobile, otp):
+def validate_otp(mobile, otp, playerid):
 
     if not mobile or not otp:
         frappe.local.response["message"] = {
@@ -465,25 +465,84 @@ def outstanding(from_date, to_date):
 
     gl = frappe.db.sql("""
         SELECT
-            posting_date, `name`, party, voucher_no, SUM(debit) debit, SUM(credit) credit,
+            posting_date, IF(ISNULL(due_date), posting_date, due_date) as due_date, `name`, party, voucher_no, SUM(debit) debit, SUM(credit) credit,
             CASE WHEN is_opening = %s then voucher_no ELSE against_voucher END AS against_voucher_1
         FROM `tabGL Entry`
         WHERE `party` = %s AND is_cancelled = 0
         GROUP BY against_voucher_1
-        ORDER BY posting_date DESC
+        ORDER BY posting_date ASC
         """, ('Yes', customer[0].customer_name), as_dict=1)
 
     return gl
 
 
 @frappe.whitelist(allow_guest=True)
+def dashboard():
+    api_key  = frappe.request.headers.get("Authorization")[6:21]
+    api_sec  = frappe.request.headers.get("Authorization")[22:]
+
+    user_email = get_user_info(api_key, api_sec)
+    if not user_email:
+        frappe.response["message"] = {
+            "success_key": 0,
+            "message": "Unauthorised Access",
+        }
+        return
+
+    customer = frappe.db.get_all('Customer',
+        filters={
+            'email_id': user_email,
+            'disabled': 0
+        },
+        fields=['customer_name']
+    )
+
+    if not len(customer) > 0:
+        frappe.response["message"] = {
+            "success_key": 0,
+            "message": "Contact Administrator",
+        }
+        return
+
+    gl = frappe.db.sql("""
+        SELECT 
+            party, sum(debit)-sum(credit) as closing,
+            100 AS cdopportunity, 200 AS overdue
+        FROM `tabGL Entry`
+        WHERE party = %s AND docstatus = 1 AND is_cancelled = 0
+        GROUP BY party
+        """, customer[0].customer_name, as_dict=1)
+    
+    address = frappe.get_doc('Address', customer[0].customer_name + '-Billing')
+    if address:
+        gl[0]['address'] = address
+
+    return gl
+
+##  Gate Entry API
+
+@frappe.whitelist(allow_guest=True)
 def create_gate_entry():
+
+    api_key  = frappe.request.headers.get("Authorization")[6:21]
+    api_sec  = frappe.request.headers.get("Authorization")[22:]
+
+    user_email = get_user_info(api_key, api_sec)
+    if not user_email:
+        frappe.response["message"] = {
+            "success_key": 0,
+            "message": "Unauthorised Access",
+        }
+        return
+
     payload = json.loads(frappe.request.data)
     payload['doctype'] = 'Gate Entry'
     # return payload
     gate_entry = frappe.get_doc(payload)
     gate_entry.flags.ignore_permissions = True
     gate_entry.save()
+
+    send_push_notification(user_email)
 
     frappe.response["message"] = {
             "success_key": 1,
@@ -494,6 +553,18 @@ def create_gate_entry():
 
 @frappe.whitelist(allow_guest=True)
 def update_gate_entry():
+
+    api_key  = frappe.request.headers.get("Authorization")[6:21]
+    api_sec  = frappe.request.headers.get("Authorization")[22:]
+
+    user_email = get_user_info(api_key, api_sec)
+    if not user_email:
+        frappe.response["message"] = {
+            "success_key": 0,
+            "message": "Unauthorised Access",
+        }
+        return
+
     payload = json.loads(frappe.request.data)
     payload['doctype'] = 'Gate Entry'
     # return payload
@@ -576,3 +647,37 @@ def gate_entry_one():
 
     return ge
 
+
+
+
+
+
+def send_push_notification(email_id):
+
+    rest_api_key = "ZTY5NzQ0ZTEtYzM4ZC00YTliLWE0Y2MtN2EyM2Y3Y2E0NmU3"
+    one_signal_app_id = "e071a208-06c2-4dd0-bf5c-658419ccb944"
+
+    playerid = get_player_id_from_username(email_id)
+
+    header = {"Content-Type": "application/json; charset=utf-8",
+          "Authorization": f"Basic {rest_api_key}"}
+
+    payload = {
+        "app_id": one_signal_app_id,
+        "contents": {"en": "English Message"},
+        "include_player_ids": [playerid]
+    }
+ 
+    resp = requests.post("https://onesignal.com/api/v1/notifications", headers=header, data=json.dumps(payload))
+ 
+    print(resp.text)
+
+def get_player_id_from_username(email):
+    user = frappe.db.sql("""
+                    SELECT * FROM `tabOTP Auth Log` where user = %s ORDER BY modified DESC
+                """, email, as_dict=True)
+
+    if len(user) > 0:
+        return user[0].playerid
+
+    return None

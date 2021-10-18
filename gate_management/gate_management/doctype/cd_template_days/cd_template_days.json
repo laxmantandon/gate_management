@@ -1,0 +1,44 @@
+{
+ "actions": [],
+ "creation": "2021-10-04 19:29:04.909190",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "from_days",
+  "to_days",
+  "cd"
+ ],
+ "fields": [
+  {
+   "fieldname": "from_days",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "From Days"
+  },
+  {
+   "fieldname": "to_days",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "To Days"
+  },
+  {
+   "fieldname": "cd",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "CD"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2021-10-04 19:30:59.627446",
+ "modified_by": "Administrator",
+ "module": "Gate Management",
+ "name": "CD Template Days",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}

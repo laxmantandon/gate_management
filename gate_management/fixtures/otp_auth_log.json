@@ -2,14 +2,15 @@
  {
   "docstatus": 0,
   "doctype": "OTP Auth Log",
-  "mobile_no": "9926100041",
+  "mobile_no": "9926100043",
   "modified": null,
-  "name": "44e481082",
+  "name": "18ebf6c93",
   "otp": "1234",
   "parent": null,
   "parentfield": null,
   "parenttype": null,
-  "time": "2021-09-18 10:27:46",
-  "user": "admin@step-tech.in"
+  "playerid": "test player id 9926100043",
+  "time": "2021-10-05 14:17:44",
+  "user": "test3@step-tech.in"
  }
 ]
