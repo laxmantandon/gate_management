@@ -1,4 +1,7 @@
-
 .awesomplete > ul {
     min-width: 450px;
+}
+
+.modal-dialog {
+    min-width: 700px;
 }
