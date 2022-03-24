@@ -54,7 +54,7 @@ def generate_keys(user):
     # user_details.flags.ignore_permissions = True
     # user_details.save()
     frappe.db.set_value('User', user, 'api_secret', api_secret)
-    frappe.db.commit()
+    # frappe.db.commit()
 
     return api_secret
 
@@ -220,7 +220,7 @@ def generate_otp(mobile, playerid):
     try:
         name = frappe.generate_hash()[0:9]
         frappe.db.sql(""" INSERT INTO `tabOTP Auth Log` (name, mobile_no, user, otp, time, playerid) VALUES (%s, %s, %s, %s, NOW(), %s)""", (name, mobile, user.name, otp, playerid))
-        frappe.db.commit()
+        # frappe.db.commit()
 
     except Exception as e:
         return e
@@ -323,7 +323,7 @@ def sign_up(email, full_name, mobile):
         user.flags.ignore_permissions = True
         user.flags.ignore_password_policy = True
         user.insert()
-        frappe.db.commit()
+        # frappe.db.commit()
 
         frappe.response["message"] = {
             "success_key": 1,
@@ -592,7 +592,7 @@ def update_gate_entry():
                 party_name=%s, reference_number=%s, transporter_name=%s, weight=%s, notes=%s, driver_name=%s, driver_contact=%s
                 WHERE name = %s
     """, (vehicle_number, godown, invoice_date, invoice_value, item_group, lr_amount, lr_date, lr_number, packages, party_name, invoice_no, transporter_name, weight, notes, driver_name, driver_contact, name))
-    frappe.db.commit()
+    # frappe.db.commit()
 
     frappe.response["message"] = {
             "success_key": 1,
@@ -671,7 +671,7 @@ def update_gate_entry_out():
     frappe.db.sql("""
         UPDATE `tabGate Entry` SET ge_status=%s, out_time=%s WHERE name = %s
     """, (ge_status, out_time, name))
-    frappe.db.commit()
+    # frappe.db.commit()
 
     frappe.response["message"] = {
             "success_key": 1,
