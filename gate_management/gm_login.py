@@ -12,51 +12,68 @@ from redis import DataError
 import requests
 
 
+# @frappe.whitelist(allow_guest=True)
+# def login(usr, pwd):
+#     try:
+#         login_manager = frappe.auth.LoginManager()
+#         login_manager.authenticate(user=usr, pwd=pwd)
+#         login_manager.post_login()
+#     except frappe.exceptions.AuthenticationError:
+#         frappe.clear_messages()
+#         frappe.local.response["message"] = {
+#             "success_key": 0,
+#             "message": "Authentication Error!"
+#         }
+
+#         return
+
+#     api_generate = generate_keys(frappe.session.user)
+#     user = frappe.get_doc('User', frappe.session.user)
+
+#     frappe.response["message"] = {
+#         "success_key": 1,
+#         "message": "Authentication success",
+#         "sid": frappe.session.sid,
+#         "api_key": user.api_key,
+#         "api_secret": api_generate,
+#         "username": user.username,
+#         "email": user.email,
+#         "role": user.roles[0].role
+#     }
+
 @frappe.whitelist(allow_guest=True)
-def login(usr, pwd):
-    try:
-        login_manager = frappe.auth.LoginManager()
-        login_manager.authenticate(user=usr, pwd=pwd)
-        login_manager.post_login()
-    except frappe.exceptions.AuthenticationError:
-        frappe.clear_messages()
-        frappe.local.response["message"] = {
-            "success_key": 0,
-            "message": "Authentication Error!"
-        }
-
-        return
-
-    api_generate = generate_keys(frappe.session.user)
-    user = frappe.get_doc('User', frappe.session.user)
-
-    frappe.response["message"] = {
-        "success_key": 1,
-        "message": "Authentication success",
-        "sid": frappe.session.sid,
-        "api_key": user.api_key,
-        "api_secret": api_generate,
-        "username": user.username,
-        "email": user.email,
-        "role": user.roles[0].role
-    }
-
 def generate_keys(user):
-    user_details = frappe.get_doc('User', user)
+    user_details = frappe.get_doc("User", user)
     api_secret = frappe.generate_hash(length=15)
-
+    
     if not user_details.api_key:
         api_key = frappe.generate_hash(length=15)
-        # user_details.api_key = api_key
-        frappe.db.set_value('User', user, 'api_key', api_key)
+        user_details.api_key = api_key
+    
+    user_details.api_secret = api_secret
 
-    # user_details.api_secret = api_secret
-    # user_details.flags.ignore_permissions = True
-    # user_details.save()
-    frappe.db.set_value('User', user, 'api_secret', api_secret)
-    # frappe.db.commit()
-
+    user_details.flags.ignore_permissions = True
+    user_details.save()
+    
     return api_secret
+
+
+    # user_details = frappe.get_doc('User', user)
+    # api_secret = frappe.generate_hash(length=15)
+
+    # if not user_details.api_key:
+    #     api_key = frappe.generate_hash(length=15)
+    #     # user_details.api_key = api_key
+    #     # frappe.db.set_value('User', user, 'api_key', api_key)
+
+    #     user_details.api_secret = api_secret
+    #     user_details.flags.ignore_permissions = True
+    #     user_details.save()
+
+    # # frappe.db.set_value('User', user, 'api_secret', api_secret)
+    # # frappe.db.commit()
+
+    # return api_secret
 
 @frappe.whitelist(allow_guest=True)
 def get_doctype_images(doctype, docname):
@@ -220,7 +237,7 @@ def generate_otp(mobile, playerid):
     try:
         name = frappe.generate_hash()[0:9]
         frappe.db.sql(""" INSERT INTO `tabOTP Auth Log` (name, mobile_no, user, otp, time, playerid) VALUES (%s, %s, %s, %s, NOW(), %s)""", (name, mobile, user.name, otp, playerid))
-        # frappe.db.commit()
+        frappe.db.commit()
 
     except Exception as e:
         return e
@@ -254,19 +271,21 @@ def validate_otp(mobile, otp, playerid):
         }
         return
 
-    user_email = frappe.db.get_all('User', filters={'mobile_no': mobile}, fields=['email'])
+    user_email = frappe.db.get_all('User', filters={'mobile_no': mobile}, fields=['name'])
+    _user_email = user_email[0].name
     # print(user_email)
-    if not user_email:
+    if len(user_email) < 1:
         frappe.local.response["message"] = {
             "success_key": 0,
             "message": "Account does not exits"
         }
         return 
-
-    user = frappe.get_doc('User', user_email[0]['email'])
     
-    api_generate = generate_keys(user.name)
-    user_resp = frappe.get_doc('User', user.name)
+    # api_generate = generate_keys(_user_email)
+    api_generate = frappe.utils.password.get_decrypted_password('User', _user_email, fieldname='api_secret')
+
+    user = frappe.get_doc('User', _user_email)
+    user_resp = frappe.get_doc('User', _user_email)
 
     frappe.response["message"] = {
         "success_key": 1,
@@ -323,27 +342,34 @@ def sign_up(email, full_name, mobile):
         user.flags.ignore_permissions = True
         user.flags.ignore_password_policy = True
         user.insert()
-        # frappe.db.commit()
+        frappe.db.commit()
 
         frappe.response["message"] = {
             "success_key": 1,
             "message": "Signup Success, Team will get in touch with you soon",
         }
 
-
+@frappe.whitelist(allow_guest=True)
 def get_user_info(api_key, api_sec):
     # api_key  = frappe.request.headers.get("Authorization")[6:21]
     # api_sec  = frappe.request.headers.get("Authorization")[22:]
     doc = frappe.db.get_value(
         doctype='User',
-        filters={"api_key": api_key, "api_secret": api_sec},
+        filters={"api_key": api_key},
         fieldname=["name"]
     )
-    if doc:
-        return doc
-    
-    return None
 
+    doc_secret = frappe.utils.password.get_decrypted_password('User', doc, fieldname='api_secret')
+
+    if api_sec == doc_secret:
+        user = frappe.db.get_value(
+            doctype="User",
+            filters={"api_key": api_key},
+            fieldname=["name"]
+        )
+        return user
+    else:
+        return "API Mismatch"
 
 @frappe.whitelist(allow_guest=True)
 def get_orders():
@@ -482,6 +508,7 @@ def dashboard():
     api_sec  = frappe.request.headers.get("Authorization")[22:]
 
     user_email = get_user_info(api_key, api_sec)
+
     if not user_email:
         frappe.response["message"] = {
             "success_key": 0,
@@ -494,7 +521,7 @@ def dashboard():
             'email_id': user_email,
             'disabled': 0
         },
-        fields=['customer_name']
+        fields=['customer_name', 'customer_primary_address']
     )
 
     if not len(customer) > 0:
@@ -513,7 +540,8 @@ def dashboard():
         GROUP BY party
         """, customer[0].customer_name, as_dict=1)
     
-    address = frappe.get_doc('Address', customer[0].customer_name + '-Billing')
+    address = frappe.get_doc('Address', customer[0].customer_primary_address)
+
     if address:
         gl[0]['address'] = address
 
@@ -592,7 +620,7 @@ def update_gate_entry():
                 party_name=%s, reference_number=%s, transporter_name=%s, weight=%s, notes=%s, driver_name=%s, driver_contact=%s
                 WHERE name = %s
     """, (vehicle_number, godown, invoice_date, invoice_value, item_group, lr_amount, lr_date, lr_number, packages, party_name, invoice_no, transporter_name, weight, notes, driver_name, driver_contact, name))
-    # frappe.db.commit()
+    frappe.db.commit()
 
     frappe.response["message"] = {
             "success_key": 1,
@@ -641,7 +669,7 @@ def gate_entry_one():
         SELECT
             *
         FROM `tabGate Entry`
-        WHERE ge_status = 'In' and %s
+        WHERE name = %s
         ORDER BY in_time DESC
         """, docname, as_dict=1)
 
@@ -671,7 +699,7 @@ def update_gate_entry_out():
     frappe.db.sql("""
         UPDATE `tabGate Entry` SET ge_status=%s, out_time=%s WHERE name = %s
     """, (ge_status, out_time, name))
-    # frappe.db.commit()
+    frappe.db.commit()
 
     frappe.response["message"] = {
             "success_key": 1,
