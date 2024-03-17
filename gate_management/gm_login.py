@@ -7,7 +7,7 @@ import base64
 import os
 from frappe.utils import get_site_name, now
 from frappe.utils.data import escape_html
-from frappe.website.utils import is_signup_enabled
+# from frappe.website.utils import is_signup_enabled
 from redis import DataError
 import requests
 
@@ -105,7 +105,7 @@ def gm_write_file(data, filename, docname):
         # system_settings = frappe.get_doc('System Settings')
         
         # filename_ext = f'/home/expressdev/frappe-bench/sites/develop.etplraipur.in/private/files/{filename}'
-        filename_ext = f'/home/express/frappe-bench/sites/erp.etplraipur.in/private/files/{filename}'
+        filename_ext = f'/home/express/frappe-bench/sites/erp.etplraipur.com/private/files/{filename}'
         
         # filename_ext = f'{system_settings.image_upload_path}/{filename}'
         base64data = data.replace('data:image/jpeg;base64,', '')
@@ -126,6 +126,46 @@ def gm_write_file(data, filename, docname):
         )
         doc.flags.ignore_permissions = True
         doc.insert()
+
+    except Exception as e:
+        return e
+
+@frappe.whitelist(allow_guest=True)
+def gm_file_upload(data, filename, docname, doctype, cdf, cdt, cdn):
+    try:
+        filename_ext = f'/home/express/frappe-bench/sites/erp.etplraipur.com/private/files/{filename}'        
+        base64data = data.split(",")[1]
+        with open(filename_ext, 'wb') as file:
+            file.write(base64.decodebytes(base64data.encode()))
+
+        doc = frappe.get_doc(
+            {
+                "file_name": filename,
+                "is_private": 1,
+                "file_url": f'/private/files/{filename}',
+                "attached_to_doctype": doctype,
+                "attached_to_name": docname,
+                "attached_to_field": cdf,
+                "doctype": "File",
+            }
+        )
+        doc.flags.ignore_permissions = True
+        doc.insert()
+        if cdf:
+            frappe.db.set_value(cdt, cdn, cdf, doc.file_url)
+
+        si = frappe.get_doc(
+            {
+                "file_name": doc.file_name,
+                "is_private": 1,
+                "file_url": doc.file_url,
+                "attached_to_doctype": frappe.db.get_value(cdt, cdn, "document_type"),
+                "attached_to_name": frappe.db.get_value(cdt, cdn, "reference_number"),
+                "doctype": "File",
+            }
+        )
+        si.flags.ignore_permissions = True
+        si.insert()
 
     except Exception as e:
         return e
@@ -299,11 +339,11 @@ def validate_otp(mobile, otp, playerid):
 
 @frappe.whitelist(allow_guest=True)
 def sign_up(email, full_name, mobile):
-    if not is_signup_enabled():
-        frappe.response["message"] = {
-            "success_key": 0,
-            "message": "Signup is",
-        }
+    # if not is_signup_enabled():
+    #     frappe.response["message"] = {
+    #         "success_key": 0,
+    #         "message": "Signup is",
+    #     }
 
     user = frappe.db.get("User", {"email": email})
     if user:
@@ -349,7 +389,6 @@ def sign_up(email, full_name, mobile):
             "message": "Signup Success, Team will get in touch with you soon",
         }
 
-@frappe.whitelist(allow_guest=True)
 def get_user_info(api_key, api_sec):
     # api_key  = frappe.request.headers.get("Authorization")[6:21]
     # api_sec  = frappe.request.headers.get("Authorization")[22:]
@@ -384,9 +423,11 @@ def get_orders():
         }
         return 
 
+    customer_name = get_customer_by_email(user_email)
+    
     orders = frappe.db.get_all('Sales Order',
         filters={
-            'contact_email': user_email,
+            'customer': customer_name,
             'docstatus': 1
         },
         fields=['name', 'transaction_date', 'docstatus', 'rounded_total', 'billing_status', 'customer', 'delivery_status', 'delivery_date', 'status']
@@ -424,15 +465,9 @@ def ledger(from_date, to_date):
         }
         return
 
-    customer = frappe.db.get_all('Customer',
-        filters={
-            'email_id': user_email,
-            'disabled': 0
-        },
-        fields=['customer_name']
-    )
+    customer_name = get_customer_by_email(user_email)
 
-    if not len(customer) > 0:
+    if not customer_name:
         frappe.response["message"] = {
             "success_key": 0,
             "message": "Contact Administrator",
@@ -446,7 +481,7 @@ def ledger(from_date, to_date):
         WHERE party = %s AND docstatus = 1 AND is_cancelled = 0
         AND
         posting_date < %s
-    """, (customer[0].customer_name, from_date), as_dict=1)
+    """, (customer_name, from_date), as_dict=1)
 
     gl = frappe.db.sql("""
         SELECT 
@@ -455,7 +490,7 @@ def ledger(from_date, to_date):
         WHERE party = %s AND docstatus = 1 AND is_cancelled = 0
         AND
         posting_date BETWEEN %s AND %s GROUP BY voucher_no ORDER BY posting_date ASC
-    """, (customer[0].customer_name, from_date, to_date), as_dict=1)
+    """, (customer_name, from_date, to_date), as_dict=1)
 
     return gl_op + gl
 
@@ -474,15 +509,9 @@ def outstanding(from_date, to_date):
         }
         return
 
-    customer = frappe.db.get_all('Customer',
-        filters={
-            'email_id': user_email,
-            'disabled': 0
-        },
-        fields=['customer_name']
-    )
+    customer_name = get_customer_by_email(user_email)
 
-    if not len(customer) > 0:
+    if not customer_name:
         frappe.response["message"] = {
             "success_key": 0,
             "message": "Contact Administrator",
@@ -497,7 +526,7 @@ def outstanding(from_date, to_date):
         WHERE `party` = %s AND is_cancelled = 0
         GROUP BY against_voucher_1
         ORDER BY posting_date ASC
-        """, ('Yes', customer[0].customer_name), as_dict=1)
+        """, ('Yes', customer_name), as_dict=1)
 
     return gl
 
@@ -565,6 +594,8 @@ def create_gate_entry():
 
     payload = json.loads(frappe.request.data)
     payload['doctype'] = 'Gate Entry'
+    branch = get_employee_branch(user_email)
+    payload['custom_branch'] = branch
     # return payload
     gate_entry = frappe.get_doc(payload)
     gate_entry.flags.ignore_permissions = True
@@ -740,3 +771,23 @@ def get_player_id_from_username(email):
         return user[0].playerid
 
     return None
+
+
+def get_customer_by_email(email):
+    customer = frappe.db.sql("""
+                SELECT
+                    l.link_title
+                FROM `tabContact` c
+                LEFT JOIN `tabDynamic Link` l ON c.name = l.parent
+                WHERE email_id = %s LIMIT 1
+            """, email, as_dict=1)
+
+    return customer[0].link_title
+
+def get_employee_branch(email):
+    employee = frappe.db.sql("""
+                select name, branch from tabEmployee where user_id = %s limit 1
+            """, email, as_dict=1)
+
+    return employee[0].branch
+
