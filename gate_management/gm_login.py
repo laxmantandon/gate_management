@@ -11,6 +11,7 @@ from frappe.utils.data import escape_html
 from redis import DataError
 import requests
 
+from frappe.integrations.utils import make_post_request
 
 # @frappe.whitelist(allow_guest=True)
 # def login(usr, pwd):
@@ -131,8 +132,45 @@ def gm_write_file(data, filename, docname):
         return e
 
 @frappe.whitelist(allow_guest=True)
-def gm_file_upload(data, filename, docname, doctype, cdf, cdt, cdn):
+def gm_write_file2(data, filename, docname, doctype):
     try:
+
+        # system_settings = frappe.get_doc('System Settings')
+        
+        # filename_ext = f'/home/expressdev/frappe-bench/sites/develop.etplraipur.in/private/files/{filename}'
+        filename_ext = f'/home/express/frappe-bench/sites/erp.etplraipur.com/private/files/{filename}'
+        
+        # filename_ext = f'{system_settings.image_upload_path}/{filename}'
+        base64data = data.split(",")[1] #.replace('data:image/jpeg;base64,', '')
+        # base64data = data.replace('data:image/*;base64,', '')
+        # base64data = data.replace('data:image/png;base64,', '')
+        # imgdata = base64.b64decode(base64data)
+        with open(filename_ext, 'wb') as file:
+            file.write(base64.decodebytes(base64data.encode()))
+            # file.write(imgdata)
+
+        doc = frappe.get_doc(
+            {
+                "file_name": filename,
+                "is_private": 1,
+                "file_url": f'/private/files/{filename}',
+                "attached_to_doctype": doctype,
+                "attached_to_name": docname,
+                "doctype": "File",
+            }
+        )
+        doc.flags.ignore_permissions = True
+        doc.insert()
+
+    except Exception as e:
+        return e
+
+
+@frappe.whitelist(allow_guest=True)
+def gm_file_upload(data, filename, docname, doctype, cdf, cdt, cdn, ref):
+    try:
+
+        #upload private file
         filename_ext = f'/home/express/frappe-bench/sites/erp.etplraipur.com/private/files/{filename}'        
         base64data = data.split(",")[1]
         with open(filename_ext, 'wb') as file:
@@ -151,6 +189,13 @@ def gm_file_upload(data, filename, docname, doctype, cdf, cdt, cdn):
         )
         doc.flags.ignore_permissions = True
         doc.insert()
+
+
+        x = doc
+        x.name = ''
+        x.is_private = 0
+        x.save()
+
         if cdf:
             frappe.db.set_value(cdt, cdn, cdf, doc.file_url)
 
@@ -166,9 +211,108 @@ def gm_file_upload(data, filename, docname, doctype, cdf, cdt, cdn):
         )
         si.flags.ignore_permissions = True
         si.insert()
+        request_for_lr_whatsapp('Sales Invoice', ref, x.file_url)
 
     except Exception as e:
         return e
+
+def request_for_lr_whatsapp(doctype, docname, file_url):
+    mobile_no = frappe.db.get_value(doctype, docname, "custom_whatsapp_number")
+    customer = frappe.db.get_value(doctype, docname, "customer")
+    invoice_no = docname
+    transport = frappe.db.get_value(doctype, docname, "transporter")
+    lr_no = frappe.db.get_value(doctype, docname, "lr_no") or "00"
+    image_url = f"{frappe.utils.get_url()}{file_url}"
+
+    if mobile_no and transport:
+        
+        url = "https://graph.facebook.com/v17.0/101772292805595/messages"
+        token = "Bearer EAAICgLCTb2MBO1ADQVchMpU2wcRTe2vV5mWHZAsSLcHrRamRZBZAShhOOV3aOTil2M8JThCJWQ5VZAea8GuYR4ULbJwO1NeIKJ4GqgcoFa2aNzZCAWp0fuCTPOTOZBMkLEfrZCLIQsV0nV9iI9MdSReI6FXfSHDphTVVia40ChPDHRBrYBy0L7xnWMUs8hZAP9KM"
+        cont = "Content-Type: application/json"
+        req = {
+            "messaging_product": "whatsapp",
+            "to": mobile_no,
+            "type": "template",
+            "template": 
+                { 
+                    "name": "transport_receipt_copy",
+                    "language":
+                        { 
+                            "code": "en_US"
+                        },
+                "components": [
+                    {
+                        "type": "header",
+                        "parameters": [
+                            {
+                                "type": "image",
+                                "image": {
+                                    "link": image_url
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "type": "body",
+                        "parameters": [
+                            {
+                                "type": "text",
+                                "text": customer
+                            },
+                            {
+                                "type": "text",
+                                "text": invoice_no
+                            },
+                            {
+                                "type": "text",
+                                "text": transport
+                            },
+                            {
+                                "type": "text",
+                                "text": lr_no
+                            },
+                            {
+                                "type": "text",
+                                "text": str(datetime.now().strftime('%d-%m-%Y'))
+                            }
+                        ]
+                    }
+                ]
+                }
+
+            }
+        frappe.log_error('request_for_lr_whatsapp_1', req)
+        # req_json = req
+        
+        try:
+            headers = {
+                'Authorization': token,
+                'Content-Type': 'application/json'
+            }
+            response = make_post_request(
+                url, headers=headers, data=json.dumps(req))
+            frappe.log_error(message=response, title='whatsapp receiver error')
+            try:
+                frappe.get_doc({
+                    "doctype": "ETPL Whatsapp Conversation",
+                    "document_type": 'Sales Invoice',
+                    "document_name": docname,
+                    "type":"Outgoing",
+                    "from_contact": "Company",
+                    "to_contact": mobile_no,
+                    "wa_id": response["messages"][0]["id"],
+                    "wa_status": response["messages"][0]["message_status"]
+                }).insert(ignore_permissions=True)
+
+            except Exception as e:
+                frappe.log_error(message=e, title='request_for_lr_whatsapp_3 COnversation Error')
+            finally:
+                frappe.db.commit()
+
+        except Exception as e:
+            frappe.log_error('request_for_lr_whatsapp_3')
+            #frappe.response["message"] = "Whatsapp Error"
+        
 
 def create_transport_jv(doc, method):
     if doc.purch_bilty_amt_jv > 0:
@@ -187,7 +331,7 @@ def create_transport_jv(doc, method):
                 {
                     "parentfield": "accounts",
                     "parenttype": "Journal Entry",
-                    "account": "Transportation Expenses - ETPL",
+                    "account": "Transport Expense (Inward) Paid to Transporter - ETPL",
                     "account_type": "Expense Account",
                     "cost_center": "Main - ETPL",
                     "account_currency": "INR",
@@ -214,7 +358,7 @@ def create_transport_jv(doc, method):
                     "credit_in_account_currency": doc.purch_bilty_amt_jv,
                     "credit": doc.purch_bilty_amt_jv,
                     "is_advance": "No",
-                    "against_account": "Transportation Expenses - ETPL",
+                    "against_account": "Transport Expense (Inward) Paid to Transporter - ETPL",
                     "doctype": "Journal Entry Account"
                 }
             ]
